@@ -1,0 +1,108 @@
+В Debian Lenny в основном репозитории (lenny) храниться версия 8.3.11, а  в backports версия 8.4.4. Мы как видите установили 8.3.11
+
+Пакет postgresql имеет зависимости с:
+
+ postgresql-8.3 postgresql-client-8.3
+ postgresql-client-common postgresql-common
+
+ postgresql-client-8.3 - Это клиентский набор, который предоставит нам например терминальный клиент psql, с которого и начнётся наше изучение Постгрес в дальнейшем.
+ postgresql-common - пакет позволяющий одновременную установку нескольких версий PostgreSQL и/или кластеров
+ Соответственно postgresql-client-common предостовляет возможность управлять несколькими программами PostgreSQL.
+
+Установка в Debian начинается как и все другие пакеты с apt или aptitude:
+apt-get install postgresql
+
+После установки в системе установлен новый системный пользователь postgres (uid 108). А одноимённый пользователь в нашей БД является супер-администратором. 
+
+
+Предварительная настройка:
+Конфигурационные файлы:
+/etc/postgresql/8.4/main/postgresql.conf - Основные настройки
+/etc/postgresql/8.4/main/pg_hba.conf - Правила для аутентификации соединений.
+
+По умолчанию отключёна работа с сетью. Вы не сможите подключиться к БД по удаленному соединению через TCP\IP. По этому требуется редактирование конфигурационного файла /etc/postgresql/8.4/main/postgresql.conf в нем найдите параметр: 
+#listen_addresses = 'localhost'
+Расскоментируйте его и вставьте значение *, т.е. получиться:
+listen_addresses = '*'
+Ниже имеется параметр #password_encryption = on, раскоментируйте его.
+Прим: Далее будет рассказано о настройках более подробно, в частности о настройках аутентификации.
+
+Теперь попробуем, зайти и выполнить запросы:
+
+// Получаем роль root
+su
+// Меняем пароль пользователя postgres в нашей ОС:
+passwd postgres
+// Меняем пользователя на postgres
+su postgres
+
+
+Теперь мы запустим терминальный клиент PostgreSQL (psql) от имени пользователя postgres:
+ postgres@dhcppc0: psql
+
+И поменяем пароль пользователя postgres в БД:
+ALTER USER postgres WITH PASSWORD 'новый_пароль';
+Прим: Не забывайте указывать точку с запятой в конце строки.
+
+
+Создадим пользователя:
+Консольной командой:
+createuser my_user
+Или SQL запрос в psql:
+CREATE USER имя_пользователя WITH PASSWORD 'пароль' CREATEDB;
+CREATEDB - Это привилегии пользователя на создание БД. О настройки рассказано будет ниже.
+
+Создадим базу данных через SQL запрос:
+CREATE DATABASE my_db_1;
+
+Можно добавить информацию о владельце БД и кодировке, тогда запрос будет таким:
+CREATE DATABASE my_db_1 WITH OWNER = postgres ENCODING = 'UTF8';
+Так же базу данных можно создать консольной командой:
+Для начала выходим из psql командой - \q. Потом набираем:
+createdb -h localhost -U my_user -W web
+
+
+Важные опции psql:
+psql [OPTION]... [DBNAME [USERNAME]] 
+
+-h - имя хота
+-U - имя пользователя БД
+-d - название БД
+-W - Имеется пароль 
+
+Теперь подключимся к созданной ранее базе данных:
+ psql -U postgres -d my_db_1
+
+Теперь несколько sql запросов:
+Создаем таблицу.
+CREATE TABLE weather(
+city varchar(80),
+temp_lo int, -- low temperature
+temp_hi int, -- high temperature
+prcp real, -- precipitation
+date date
+);
+
+Теперь вставим значения в таблицу:
+
+INSERT INTO weather (city, temp_lo, temp_hi, prcp, date)
+VALUES ('San Francisco', 43, 57, 0.0, '1994-11-29');
+
+И посмотрим результат:
+SELECT * FROM weather;
+
+Результат будет таким:
+
+     city      | temp_lo | temp_hi | prcp |    date    
+---------------+---------+---------+------+------------
+ San Francisco |      43 |      57 |    0 | 1994-11-29
+
+
+iptables -A INPUT -p tcp --dport 5432 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -p tcp  --sport 5432 -d 0/0 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+
+/etc/init.d/postgresql restart
+
+
+
+# iptables -I INPUT -p tcp -i eth0 --dport 5432 -j LOG

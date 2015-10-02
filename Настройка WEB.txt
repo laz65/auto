@@ -1,0 +1,328 @@
+﻿Добавим Apache в автозагрузку:
+
+chkconfig --level 2345 httpd on
+(# chkconfig --list    - просмотр автозагрузки,)
+
+
+В файлe
+vi /etc/httpd/conf/httpd.conf # добавляем строку:
+
+ 
+AddType application/x-httpd-php .php .html .htm
+
+и меняем:
+User apache
+Group root
+
+
+!Для windows должно быть в файле:
+
+#
+KeepAlive Off
+
+#
+# MaxKeepAliveRequests: The maximum number of requests to allow
+# during a persistent connection. Set to 0 to allow an unlimited amount.
+# We recommend you leave this number high, for maximum performance.
+#
+MaxKeepAliveRequests 100
+
+#
+# KeepAliveTimeout: Number of seconds to wait for the next request from the
+# same client on the same connection.
+#
+KeepAliveTimeout 15
+
+##
+## Server-Pool Size Regulation (MPM specific)
+##
+
+# prefork MPM
+# StartServers: number of server processes to start
+# MinSpareServers: minimum number of server processes which are kept spare
+# MaxSpareServers: maximum number of server processes which are kept spare
+# ServerLimit: maximum value for MaxClients for the lifetime of the server
+# MaxClients: maximum number of server processes allowed to start
+# MaxRequestsPerChild: maximum number of requests a server process serves
+<IfModule prefork.c>
+StartServers       8
+MinSpareServers    5
+MaxSpareServers   20
+ServerLimit      256
+MaxClients       256
+MaxRequestsPerChild  4000
+</IfModule>
+
+# worker MPM
+# StartServers: initial number of server processes to start
+# MaxClients: maximum number of simultaneous client connections
+# MinSpareThreads: minimum number of worker threads which are kept spare
+# MaxSpareThreads: maximum number of worker threads which are kept spare
+# ThreadsPerChild: constant number of worker threads in each server process
+# MaxRequestsPerChild: maximum number of requests a server process serves
+<IfModule worker.c>
+StartServers         2
+MaxClients         150
+MinSpareThreads     25
+MaxSpareThreads     75
+ThreadsPerChild     25
+MaxRequestsPerChild  0
+</IfModule>
+
+
+
+Также 
+
+Listen 80
+
+ и далее
+
+ServerName auto_base_administrator:80
+
+и в переменную окружения path добавить: 
+c:\Program Files\PostgreSQL\EnterpriseDB-Apache\Php\apache\bin
+
+
+Для входа на сервер под паролем
+добавляем строки в секцию
+
+<Directory "/var/www/auto">
+    Options Indexes MultiViews
+    AuthName "Ushet_automobile"
+    AuthType Basic
+    Require valid-user
+    AuthUserFile /var/www/auto/.htpasswd
+    AllowOverride all
+    Order allow,deny
+    Allow from all
+</Directory>
+
+выходим:
+
+:wq
+
+создаем файл с паролем: 
+
+htpasswd -bc /var/www/auto/.htpasswd Имя_пользавателя Пароль
+
+для добавления пользователя
+
+htpasswd -b /var/www/auto/.htpasswd Имя_пользавателя Пароль
+
+
+
+После сохранения и создания нужных каталогов:
+
+устанавлиаем собственника
+
+chown -R apache /var/www/
+
+service httpd restart
+
+
+
+Для входа по ftp:
+
+Установка сервера FTP
+
+yum --disablerepo=\* --enablerepo=c5-media install -y vsftpd
+
+chkconfig --level 2345 vsftpd on
+
+useradd -d /var/www/auto -m auto
+
+passwd auto
+
+проверить, чтобы в файле /etc/passwd юзер auto был /sbin/nologin
+
+Пароль для ftp - auto22 
+
+chown -R auto /var/www/auto
+
+разрешить доступ через ftpd к домашним директориям.
+
+vi /etc/vsftpd/vsftpd.conf
+добавить строку: 
+
+# Разрешаем доступ локальным пользователям
+local_enable=YES
+и
+chroot_local_user=YES
+
+
+setsebool -P ftp_home_dir 1
+setsebool -P allow_ftpd_full_access 1
+modprobe ip_conntrack_ftp 
+
+
+setsebool -P httpd_disable_trans 1
+
+usermod -g root apache
+
+service httpd restart
+chmod 777 /var/www/auto
+
+
+Запустить 
+visudo
+
+Добавить после
+root    ALL=(ALL)       ALL
+apache  ALL=(ALL)        NOPASSWD: ALL
+
+Заменить 
+Default  requiretty 
+на 
+Default !requiretty 
+
+добавим в файл:
+vi /etc/rc.local
+
+modprobe ip_conntrack_ftp 
+
+service vsftpd restart
+
+
+Теперь с базами данных:
+
+Инициализируем базу:
+/usr/bin/postgresql-setup initdb 
+
+
+
+
+создаем пользователя базы:
+su - postgres
+createuser -P
+
+*********************************************************************
+Enter name of user to add: auto
+Enter password for new user:12345
+Enter it again:12345
+Shall the new role be a superuser? (y/n) n
+Shall the new user be allowed to create databases? (y/n) y
+Shall the new user be allowed to create more new users? (y/n) n
+CREATE USER
+
+в файле
+vi /var/lib/pgsql/data/postgresql.conf
+должно быть: 
+listen_addresses = '*' 
+max_connections = 100
+port = 5432  (убираем #)
+
+ Теперь редактируем файл
+vi /var/lib/pgsql/data/pg_hba.conf
+ чтобы обеспечить возможность только что созданному пользователю asterisk устанавливать соединения с сервером PostgreSQL через TCP/IP. В конце 
+файла замените все под комментарием # :
+local  all  auto                               		trust
+host   all  auto  127.0.0.1  255.255.255.255   	md5
+***************************************************************************
+
+
+Создать базу данных auto и задать   
+в качестве владельца нашего пользователя auto.
+
+createdb --owner=sklad sklad
+
+CREATE DATABASE
+Выйдя из учетной записи postgres и вернувшись в административную 
+учетную запись, перезапустите сервер PostgreSQL:
+
+$ exit
+
+service postgresql restart
+
+
+
+
+
+
+
+
+
+
+Вход в postgreaql:
+
+psql -d auto auto
+
+
+Создаем таблицы:
+
+Основна таблиця auto
+
+1	auto_id integer	Індекс
+2	data_stv char (16)	Дата та час створення
+3	stan varchar(32)	Стан
+4	podav varchar(32)	Хто подав заявку
+5	data_otpr char (16)	Дата виїзду
+6	data_prib char (16)	Дата приїзду
+7	mobil varchar(32)	Машина 
+8	punkty varchar(256)	Пункти призначень
+9	podaty varchar(256)	Куди і на який час подати автомобіль
+10	vidpov varchar(32)	Відповідальний за використання автомобіля
+11	zatv varchar(32)	Затвердження керівником
+12	data_zatv char (16)	Дата та час затвердження
+13	data_stan char (16)	Дата та час зміни стану
+14	vodiy varchar(32)	Водій
+15	meta			Мета
+16	history
+17	benzin
+18	passk			Кількість пассажирів			
+19	passinf			Інформація про пассажирів
+20	vantinf			Інформація про вантаж
+
+Таблиця користувачів user_auto
+
+1	user_auto_id integer	Індекс
+2	user varchar(32)	Прізвище користувача
+3	dostup integer		Рівень доступу користувача
+4	telefone varchar(32)	Телефон
+5	pidr varchar(32)	Підрозділ
+6	login varchar(32)	Логін
+
+Таблиця автомобілів mobil_auto
+
+1	mobil_auto_id integer	Індекс
+2	mobil varchar(32)	Автомобіль
+
+Таблиця водіїв vodii
+
+1	vodii_id integer	Індекс
+2	vodiy varchar(32)	Прізвище Ім’я та по-батькові водія
+3	telefon varchar(32)	Телефон
+4	posada varchar(32)	Посада водія
+
+Таблиця станів stan_auto
+
+1	stan_auto_id integer	Індекс
+2	stan varchar(32)	Стан
+
+
+
+
+CREATE SEQUENCE auto_seq;
+CREATE TABLE auto (
+    auto_id integer NOT NULL DEFAULT nextval('auto_seq'), data_stv integer,  stan varchar(32), podav varchar(32), data_otpr integer, data_prib integer, mobil varchar(32), punkty varchar(256), podaty varchar(256), vidpov varchar(32), zatv varchar(32), data_zatv integer, data_stan integer, vodiy varchar(32), PRIMARY KEY (auto_id) );
+
+CREATE SEQUENCE user_auto_seq;
+CREATE TABLE user_auto (
+    user_auto_id  integer NOT NULL DEFAULT nextval('user_auto_seq'), user_auto varchar(32), dostup integer, telefone varchar(32), pidr varchar(32), login varchar(32),  PRIMARY KEY (user_auto_id) );
+
+CREATE SEQUENCE mobil_auto_seq;
+CREATE TABLE mobil_auto (
+    mobil_auto_id  integer NOT NULL DEFAULT nextval('mobil_auto_seq'), mobil varchar(32),  PRIMARY KEY (mobil_auto_id) );
+
+CREATE SEQUENCE vodii_seq;
+CREATE TABLE vodii (
+    vodii_id  integer NOT NULL DEFAULT nextval('vodii_seq'), vodiy varchar(32), telefon varchar(32), posada varchar(32), PRIMARY KEY (vodii_id) );
+	
+CREATE SEQUENCE stan_auto_seq;
+CREATE TABLE stan_auto (
+    stan_auto_id  integer NOT NULL DEFAULT nextval('stan_auto_seq'), stan varchar(32),  PRIMARY KEY (stan_auto_id) );
+
+
+
+
+
+
