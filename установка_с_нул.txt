@@ -1,0 +1,293 @@
+﻿1.====================================================================
+Устанавливаем CentOS в минимальной конфигурации
+
+При установке выключаем все  приложения
+оставляем только в Приложениях редакторы и в Базовой системе основу
+
+2.========================================================================
+после перезагрузки 
+Если нет интернета, обновление с DVD, то делаем так:
+vi /etc/yum.repos.d/CentOS-Media.repo
+
+Устанавливаем:
+enabled=1
+Выходим c сохранением:
+:wq
+
+mkdir /media/cdrom
+mount /dev/cdrom /media/cdrom
+
+yum --disablerepo=\* --enablerepo=c5-media install -y mc
+
+
+при наличии интернета через прокси указываем имя прокси сервера
+
+vi /etc/yum.conf
+
+В файле добавляем строку:
+
+proxy=http://10.80.11.106:3128 
+
+:wq
+
+yum - install -y httpd vsftpd php php-cli php-pgsql postgresql postgresql-server
+
+yum  install -y 
+
+
+Инициализируем базу:
+
+service postgresql initdb
+
+запускаем сервис:
+
+service postgresql start
+
+создаем пользователя для доступа по фтп (без прав логиниться):
+
+useradd -d /var/www/auto/ -s /sbin/nologin auto
+passwd auto
+
+
+
+создаем пользователя базы:
+su - postgres
+createuser -Pd auto
+
+Enter password for new user:XXXXXX
+Enter it again:XXXXXX
+Shall the new role be a superuser? (y/n) n
+Shall the new user be allowed to create databases? (y/n) y
+Shall the new user be allowed to create more new users? (y/n) n
+CREATE USER
+
+в файле
+vi /var/lib/pgsql/data/postgresql.conf
+должно быть: 
+listen_addresses = '*' 
+max_connections = 100
+port = 5432  (убираем #)
+
+ Теперь редактируем файл
+vi /var/lib/pgsql/data/pg_hba.conf
+ чтобы обеспечить возможность только что созданному пользователю asterisk устанавливать соединения с сервером PostgreSQL через TCP/IP. В конце 
+файла замените все под комментарием # :
+local  all  all                              		trust
+host   all  all  127.0.0.1  255.255.255.255   	md5
+
+
+Создать базу данных asterisk и задать   
+в качестве владельца нашего пользователя asterisk.
+
+createdb --owner=auto auto
+
+CREATE DATABASE
+Выйдя из учетной записи postgres и вернувшись в административную 
+учетную запись, перезапустите сервер PostgreSQL:
+
+$ exit
+
+service postgresql restart
+
+
+Добавим сервис PostgreSQL в автозагрузку:
+
+chkconfig --level 2345 postgresql on
+
+Добавим Apache в автозагрузку:
+
+chkconfig --level 2345 httpd on
+(# chkconfig --list    - просмотр автозагрузки,)
+
+В файлe
+vi /etc/httpd/conf/httpd.conf # добавляем строку:
+
+ 
+AddType application/x-httpd-php .php .html .htm
+
+и меняем:
+User apache
+Group root
+
+Для входа на сервер под паролем
+добавляем строки в секцию
+<Directory "/var/www/html"> 
+(вместо AllowOverride None):
+
+    AuthName "Autoinformator"
+    AuthType Basic
+    Require valid-user
+    AuthUserFile /var/www/html/.htpasswd
+    AllowOverride all
+
+выходим:
+
+:wq
+
+создаем файл с паролем: 
+
+htpasswd -bc /var/www/html/.htpasswd Имя_пользавателя Пароль
+
+(имя - inf пароль - byajhvfnjh (информатор в анг.раскладке)
+
+				
+настроим файрвол:
+Откроем файл:
+vi /etc/sysconfig/iptables
+
+Добавим строки
+-A RH-Firewall-1-INPUT -m state --state NEW -m tcp -p tcp --dport 21 -j ACCEPT
+-A RH-Firewall-1-INPUT -m state --state NEW -m tcp -p tcp --dport 80 -j ACCEPT
+-A RH-Firewall-1-INPUT -m state --state NEW -m tcp -p tcp --dport 5432 -j ACCEPT
+
+для SIP ещё нужно добавить:
+
+-I RH-Firewall-1-INPUT -p udp --dport 5060 -j ACCEPT
+-I RH-Firewall-1-INPUT -p udp --dport 10000:20000 -j ACCEPT
+
+
+Выйдем
+:wq
+
+service iptables restart
+
+
+
+проверка соединения:
+psql -h 127.0.0.1 -U auto
+
+или psql -d auto auto
+
+создаем таблицу:
+
+создаем индексы:
+
+и ещё:
+
+
+
+Для дачи привилегий созданному пользователю:
+
+GRANT SELECT ON obzvon TO aleksey;		# даем привилегию SECECT на таблицу obzvon пользователю 
+GRANT SELECT ON spiski TO aleksey;
+REVOKE  SELECT ON obzvon FROM aleksey;     # одбираем привилегию
+
+
+
+
+для выхода: /q
+
+8.=========================================================
+
+Копируем содержимое папки "auto" в /var/www/auto
+
+устанавлиаем собственника
+
+chown -R apache /var/www/
+
+
+13.============================================================
+
+
+Установка сервера FTP
+
+
+chkconfig --level 2345 vsftpd on
+
+
+Пароль для webdaw и ftp - auto22 
+
+chown -R loska /var/www/auto
+
+разрешить доступ через ftpd к домашним директориям.
+
+vi /etc/vsftpd/vsftpd.conf
+добавить строку: 
+
+chroot_local_user=YES
+
+а также в новых версиях vsftpd если разрешена запись в домашний каталог добавить:
+
+allow_writeable_chroot=YES
+
+установка имени компьютера и настройна сети для centos 7:
+
+hostnamectl set-hostname centos7.ck.ukrtel.com
+
+vi /etc/sysconfig/network-scripts/ifcfg-enp4s4 
+(enp4s4) - имя сетевой карты
+
+TYPE="Ethernet"
+BOOTPROTO="none"
+DEFROUTE="yes"
+IPV4_FAILURE_FATAL="no"
+IPV6INIT="no"
+NAME="enp4s4"
+UUID="f0db3773-2777-4cc0-bf91-e6f3ca96a7c3"
+DEVICE="enp4s4"
+ONBOOT="yes"
+IPADDR="10.80.15.44"
+NETMASK="255.255.255.0"
+GATEWAY="10.80.15.1"
+DNS1="10.36.1.101"
+DNS2="10.36.1.102"
+
+:wq
+
+для записи в файл при включенном selinux:
+
+chcon  -R -t httpd_sys_rw_content_t /var/www/
+
+setsebool -P httpd_enable_homedirs 1
+
+Для открытия сокетов из PHP:
+
+setsebool -P httpd_can_network_connect 1
+
+
+setsebool -P ftp_home_dir 1
+setsebool -P allow_ftpd_full_access 1
+modprobe ip_conntrack_ftp 
+
+
+setsebool -P httpd_disable_trans 1
+
+Для соединения с динстанционной базой:
+
+setsebool -P httpd_can_network_connect 1
+
+usermod -g root apache
+
+service httpd restart
+chmod 777 /var/www
+
+
+Запустить 
+visudo
+
+Добавить после
+root    ALL=(ALL)       ALL
+apache  ALL=(ALL)        NOPASSWD: ALL
+
+Заменить 
+Default  requiretty 
+на 
+Default !requiretty 
+
+
+Для правильной работы с часовым поясом должно быть в файле /etc/asterisk/cdr.conf :
+
+usegmtime=no    ; log date/time in GMT.  Default is "no"
+
+Синхронизация времени.
+
+Установка
+yum install ntp
+service ntpd restart
+chkconfig --level 2345 ntpd on
+
+Проверка:
+
+ntpq -c peers
+
+
