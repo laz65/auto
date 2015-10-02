@@ -103,7 +103,6 @@ iptables -A OUTPUT -p tcp  --sport 5432 -d 0/0 --dport 1024:65535 -m state --sta
 
 /etc/init.d/postgresql restart
 
-
-
-
 # iptables -I INPUT -p tcp -i eth0 --dport 5432 -j LOG
+
+###
