@@ -1,11 +1,77 @@
 ﻿1.====================================================================
 Устанавливаем CentOS в минимальной конфигурации
 
+создаем raid-1 массивы - 
+
+1- /boot - ext4 - 500 M
+2 - /  -      ext4 - 140 G - все остальное просранство
+3- swap - swap - 2G
+
+
 При установке выключаем все  приложения
 оставляем только в Приложениях редакторы и в Базовой системе основу
 
 2.========================================================================
 после перезагрузки 
+
+Настраиваем сеть:
+
+смотрим сетевые устройства:
+
+ip -a
+
+видим:
+-----------------------------------------------------------------------------------------------------------------------------------------------
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: enp4s4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP qlen 1000
+    link/ether 00:11:d8:98:d7:8e brd ff:ff:ff:ff:ff:ff
+    inet 10.80.15.44/24 brd 10.80.15.255 scope global enp4s4
+       valid_lft forever preferred_lft forever
+    inet6 fe80::211:d8ff:fe98:d78e/64 scope link
+       valid_lft forever preferred_lft forever
+_______________(enp4s4) - имя сетевой карты________________________________
+
+установка имени компьютера и настройна сети для centos 7:
+
+hostnamectl set-hostname centos7.ck.ukrtel.com
+
+vi /etc/sysconfig/network-scripts/ifcfg-enp4s4 
+_(enp4s4) - имя сетевой карты_
+
+TYPE="Ethernet"
+BOOTPROTO="none"
+DEFROUTE="yes"
+IPV4_FAILURE_FATAL="no"
+IPV6INIT="no"
+NAME="enp4s4"
+UUID="f0db3773-2777-4cc0-bf91-e6f3ca96a7c3"
+DEVICE="enp4s4"
+ONBOOT="yes"
+IPADDR="10.80.15.44"
+NETMASK="255.255.255.0"
+GATEWAY="10.80.15.1"
+DNS1="10.36.1.101"
+DNS2="10.36.1.102"
+
+:wq
+
+service network restart
+
+==============================
+
+смотрим состояние массива дисков
+
+cat /proc/mdstat
+
+
+
+============================================================
+
 Если нет интернета, обновление с DVD, то делаем так:
 vi /etc/yum.repos.d/CentOS-Media.repo
 
@@ -19,20 +85,105 @@ mount /dev/cdrom /media/cdrom
 
 yum --disablerepo=\* --enablerepo=c5-media install -y mc
 
-
+=================================================================
 при наличии интернета через прокси указываем имя прокси сервера
 
 vi /etc/yum.conf
 
-В файле добавляем строку:
+В файле добавляем строку (a - включение редактирования) :
 
 proxy=http://10.80.11.106:3128 
 
 :wq
 
-yum - install -y httpd vsftpd php php-cli php-pgsql postgresql postgresql-server
 
-yum  install -y 
+yum  install -y mc
+
+===================================================================
+Доступ по ключу:
+
+в файле /etc/ssh/sshd.config убрать коменты перед строками:
+--------------------------------------------
+RSAAuthentication yes
+PubkeyAuthentication yes
+----------------------------------------------
+
+ssh-keygen -t rsa
+
+два раза ввод
+
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+rm ~/.ssh/id_rsa.pub
+
+скопировать файл  id_rsa из директории ~/.ssh себе на компьютер (через ftp) и использовать в качестве закрытого ключа
+
+
+service sshd restart
+
+
+=================================================================
+
+yum  install -y httpd vsftpd php php-cli php-pgsql postgresql postgresql-server
+
+
+===========================================
+врем откл selinux
+setenforce 0
+проверка
+getenforce
+============================= 
+
+установка samba
+
+
+yum install -y samba samba-client
+
+firewall-cmd --permanent --add-service=samba
+
+systemctl restart firewalld
+
+
+setsebool -P samba_enable_home_dirs on
+setsebool -P samba_export_all_ro on
+
+создаем пользователя для доступа по самбе (без прав логиниться):
+
+useradd -d /home/superbas/ -s /sbin/nologin superbas
+passwd superbas
+
+
+smbpasswd  -a superbas
+
+файл /etc/samba/smb.conf:
+-----------------------------------------------------------------------------
+[global]
+
+; unix charset = UTF-8
+; dos charset = cp866
+ workgroup = CORPX
+ security = user
+ map to guest = Bad User
+
+[share]
+ path = /home/superbas
+ guest ok = yes
+; browseable = yes
+ read only = no
+ force user = superbas
+-------------------------------------------------------------------------------
+
+
+
+systemctl enable smb
+systemctl restart smb 
+
+для selinux:
+chcon -t samba_share_t /home/superbas 
+ 
+smbclient -L //10.80.15.44/superbas -Usuperbas
+ 
+  
+========================================================
 
 
 Инициализируем базу:
@@ -56,10 +207,16 @@ createuser -Pd auto
 
 Enter password for new user:XXXXXX
 Enter it again:XXXXXX
-Shall the new role be a superuser? (y/n) n
-Shall the new user be allowed to create databases? (y/n) y
-Shall the new user be allowed to create more new users? (y/n) n
 CREATE USER
+
+мажем создать суперпользователя:
+
+createuser -Ps superbas
+
+Enter password for new user:XXXXXX
+Enter it again:XXXXXX
+CREATE USER
+
 
 в файле
 vi /var/lib/pgsql/data/postgresql.conf
@@ -74,10 +231,13 @@ vi /var/lib/pgsql/data/pg_hba.conf
 файла замените все под комментарием # :
 local  all  all                              		trust
 host   all  all  127.0.0.1  255.255.255.255   	md5
+host   all  all  10.80.0.0  255.255.0.0   	md5
 
 
-Создать базу данных asterisk и задать   
-в качестве владельца нашего пользователя asterisk.
+
+
+Создать базу данных auto и задать   
+в качестве владельца нашего пользователя auto.
 
 createdb --owner=auto auto
 
@@ -94,10 +254,310 @@ service postgresql restart
 
 chkconfig --level 2345 postgresql on
 
+или
+
+systemctl enable postgresql
+
+================================================
+
+
+проверка соединения:
+psql -h 127.0.0.1 -U auto
+
+или psql -d auto auto
+
+=====================================================================================================
+создаем структуру
+
+
+SET statement_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+
+--
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
+--
+
+CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+
+
+--
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+
+
+SET search_path = public, pg_catalog;
+
+--
+-- Name: auto_seq; Type: SEQUENCE; Schema: public; Owner: auto
+--
+
+CREATE SEQUENCE auto_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.auto_seq OWNER TO auto;
+
+SET default_tablespace = '';
+
+SET default_with_oids = false;
+
+--
+-- Name: auto; Type: TABLE; Schema: public; Owner: auto; Tablespace: 
+--
+
+CREATE TABLE auto (
+    auto_id integer DEFAULT nextval('auto_seq'::regclass) NOT NULL,
+    ip_stv integer,
+    stan character varying(32),
+    podav character varying(64),
+    data_otpr integer,
+    data_prib integer,
+    mobil character varying(255),
+    punkty character varying(1024),
+    podaty character varying(256),
+    vidpov character varying(256),
+    vodiy character varying(64),
+    meta character varying(512),
+    history character varying(2048),
+    benzin double precision,
+    passk integer,
+    passinf character varying(512),
+    vantinf character varying(256)
+);
+
+
+ALTER TABLE public.auto OWNER TO auto;
+
+--
+-- Name: mobil_auto_seq; Type: SEQUENCE; Schema: public; Owner: auto
+--
+
+CREATE SEQUENCE mobil_auto_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.mobil_auto_seq OWNER TO auto;
+
+--
+-- Name: mobil_auto; Type: TABLE; Schema: public; Owner: auto; Tablespace: 
+--
+
+CREATE TABLE mobil_auto (
+    mobil_auto_id integer DEFAULT nextval('mobil_auto_seq'::regclass) NOT NULL,
+    mobil character varying(255)
+);
+
+
+ALTER TABLE public.mobil_auto OWNER TO auto;
+
+--
+-- Name: stan_auto_seq; Type: SEQUENCE; Schema: public; Owner: auto
+--
+
+CREATE SEQUENCE stan_auto_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.stan_auto_seq OWNER TO auto;
+
+--
+-- Name: stan_auto; Type: TABLE; Schema: public; Owner: auto; Tablespace: 
+--
+
+CREATE TABLE stan_auto (
+    stan_auto_id integer DEFAULT nextval('stan_auto_seq'::regclass) NOT NULL,
+    stan character varying(32)
+);
+
+
+ALTER TABLE public.stan_auto OWNER TO auto;
+
+--
+-- Name: user_auto_seq; Type: SEQUENCE; Schema: public; Owner: auto
+--
+
+CREATE SEQUENCE user_auto_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.user_auto_seq OWNER TO auto;
+
+--
+-- Name: user_auto; Type: TABLE; Schema: public; Owner: auto; Tablespace: 
+--
+
+CREATE TABLE user_auto (
+    user_auto_id integer DEFAULT nextval('user_auto_seq'::regclass) NOT NULL,
+    user_auto character varying(64),
+    telefone character varying(64),
+    pidr character varying(512),
+    login character varying(32),
+    dostup integer DEFAULT 0 NOT NULL,
+    pass character varying(32),
+    ip character varying(32),
+    posada character varying(128)
+);
+
+
+ALTER TABLE public.user_auto OWNER TO auto;
+
+--
+-- Name: vodii_seq; Type: SEQUENCE; Schema: public; Owner: auto
+--
+
+CREATE SEQUENCE vodii_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.vodii_seq OWNER TO auto;
+
+--
+-- Name: vodii; Type: TABLE; Schema: public; Owner: auto; Tablespace: 
+--
+
+CREATE TABLE vodii (
+    vodii_id integer DEFAULT nextval('vodii_seq'::regclass) NOT NULL,
+    vodiy character varying(64),
+    telefon character varying(32),
+    posada character varying(128)
+);
+
+
+ALTER TABLE public.vodii OWNER TO auto; 
+
+
+
+
+
+
+=================================================================================
+
+
+
+
+
+
+Для настройки резервирования базы создаем исполняемый файл backdb с содержимым:
+-------------------------------------------------------------------------------------
+#!/bin/sh
+
+a=`date +%Y-%m-%d-%H%M`;
+mkdir /home/superbas/pgdamp/$a
+pg_dump -U postgres -w auto | /usr/bin/gzip -c > /home/superbas/pgdamp/$a/auto.gz
+pg_dump -U postgres -w mobil | /usr/bin/gzip -c > /home/superbas/pgdamp/$a/mobil.gz
+chown -R superbas /home/superbas
+echo "All ok!"
+---------------------------------------------------------------------------------------
+где /home/superbas/pgdamp - путь к директории архива, желательно расшаеной в сети
+создадим его
+mkdir   /home/superbas/pgdamp
+chown -R superbas  /home/superbas
+
+для восстановления можно создать файл  restdb:
+_______________________________________________________
+#!/bin/sh
+
+dropdb -U postgres $1
+createdb -U $1 $1
+/usr/bin/gunzip -c $1.gz | psql -U postgres $1
+echo "All ok!"
+_______________________________________________________
+
+и запускать из директории с архивом базы: 
+
+./restdb auto
+./restdb mobil
+
+
+Для создания бэкапа всех баз
+
+pg_dumpall -U postgres | /usr/bin/gzip -c > all.gz
+ 
+ для восстановления
+ 
+ 
+gunzip -c all.gz | psql -U postgres
+  
+
+
+13.============================================================
+
+
+Установка сервера FTP
+
+
+chkconfig --level 2345 vsftpd on
+
+
+Пароль для webdaw и ftp - auto22 
+
+chown -R auto /var/www/auto
+
+разрешить доступ через ftpd к домашним директориям.
+
+vi /etc/vsftpd/vsftpd.conf
+добавить строку: 
+
+chroot_local_user=YES
+
+а также в новых версиях vsftpd если разрешена запись в домашний каталог добавить:
+
+allow_writeable_chroot=YES
+
+для записи в файл при включенном selinux:
+
+chcon  -R -t httpd_sys_rw_content_t /var/www/
+
+setsebool -P httpd_enable_homedirs 1
+
+Для открытия сокетов из PHP:
+
+setsebool -P httpd_can_network_connect 1
+
+
+setsebool -P ftp_home_dir 1
+setsebool -P allow_ftpd_full_access 1
+                                                              ###modprobe ip_conntrack_ftp 
+
+
+setsebool -P httpd_disable_trans 1
+
+systemctl restart vsftpd
+
+===============================================
+
+
 Добавим Apache в автозагрузку:
 
 chkconfig --level 2345 httpd on
 (# chkconfig --list    - просмотр автозагрузки,)
+или
+systemctl enable httpd
 
 В файлe
 vi /etc/httpd/conf/httpd.conf # добавляем строку:
@@ -109,16 +569,15 @@ AddType application/x-httpd-php .php .html .htm
 User apache
 Group root
 
-Для входа на сервер под паролем
-добавляем строки в секцию
-<Directory "/var/www/html"> 
-(вместо AllowOverride None):
+меняем
+DocumentRoot "/var/www"
 
-    AuthName "Autoinformator"
-    AuthType Basic
-    Require valid-user
-    AuthUserFile /var/www/html/.htpasswd
-    AllowOverride all
+изменяем  секцию
+<Directory "/var/www">
+    AllowOverride All
+    # Allow open access:
+    Require all granted
+</Directory>
 
 выходим:
 
@@ -126,9 +585,15 @@ Group root
 
 создаем файл с паролем: 
 
-htpasswd -bc /var/www/html/.htpasswd Имя_пользавателя Пароль
+htpasswd -bc /var/www/auto/.htpasswd Имя_пользавателя Пароль
 
-(имя - inf пароль - byajhvfnjh (информатор в анг.раскладке)
+в каталог /var/www/auto ложим файл .htaccess с содержимым:
+
+AuthName "Autotrans"
+AuthType Basic
+AuthUserFile /var/www/auto/.htpasswd
+Require valid-user
+
 
 				
 настроим файрвол:
@@ -151,33 +616,19 @@ vi /etc/sysconfig/iptables
 
 service iptables restart
 
+Для centos 7 :
+
+firewall-cmd --list-all         (просмотр всех настроек файрвола)
+просмотр доступных сервисов:
+firewall-cmd --get-services
 
 
-проверка соединения:
-psql -h 127.0.0.1 -U auto
+firewall-cmd --permanent --add-service=http --add-service=ftp --add-service=postgresql --add-service=proxy-dhcp
 
-или psql -d auto auto
-
-создаем таблицу:
-
-создаем индексы:
-
-и ещё:
-
-
-
-Для дачи привилегий созданному пользователю:
-
-GRANT SELECT ON obzvon TO aleksey;		# даем привилегию SECECT на таблицу obzvon пользователю 
-GRANT SELECT ON spiski TO aleksey;
-REVOKE  SELECT ON obzvon FROM aleksey;     # одбираем привилегию
+systemctl restart firewalld
 
 
 
-
-для выхода: /q
-
-8.=========================================================
 
 Копируем содержимое папки "auto" в /var/www/auto
 
@@ -186,71 +637,6 @@ REVOKE  SELECT ON obzvon FROM aleksey;     # одбираем привилеги
 chown -R apache /var/www/
 
 
-13.============================================================
-
-
-Установка сервера FTP
-
-
-chkconfig --level 2345 vsftpd on
-
-
-Пароль для webdaw и ftp - auto22 
-
-chown -R loska /var/www/auto
-
-разрешить доступ через ftpd к домашним директориям.
-
-vi /etc/vsftpd/vsftpd.conf
-добавить строку: 
-
-chroot_local_user=YES
-
-а также в новых версиях vsftpd если разрешена запись в домашний каталог добавить:
-
-allow_writeable_chroot=YES
-
-установка имени компьютера и настройна сети для centos 7:
-
-hostnamectl set-hostname centos7.ck.ukrtel.com
-
-vi /etc/sysconfig/network-scripts/ifcfg-enp4s4 
-(enp4s4) - имя сетевой карты
-
-TYPE="Ethernet"
-BOOTPROTO="none"
-DEFROUTE="yes"
-IPV4_FAILURE_FATAL="no"
-IPV6INIT="no"
-NAME="enp4s4"
-UUID="f0db3773-2777-4cc0-bf91-e6f3ca96a7c3"
-DEVICE="enp4s4"
-ONBOOT="yes"
-IPADDR="10.80.15.44"
-NETMASK="255.255.255.0"
-GATEWAY="10.80.15.1"
-DNS1="10.36.1.101"
-DNS2="10.36.1.102"
-
-:wq
-
-для записи в файл при включенном selinux:
-
-chcon  -R -t httpd_sys_rw_content_t /var/www/
-
-setsebool -P httpd_enable_homedirs 1
-
-Для открытия сокетов из PHP:
-
-setsebool -P httpd_can_network_connect 1
-
-
-setsebool -P ftp_home_dir 1
-setsebool -P allow_ftpd_full_access 1
-modprobe ip_conntrack_ftp 
-
-
-setsebool -P httpd_disable_trans 1
 
 Для соединения с динстанционной базой:
 
@@ -289,5 +675,36 @@ chkconfig --level 2345 ntpd on
 Проверка:
 
 ntpq -c peers
+
+=========================================================================================
+Настройка прокси
+
+yum install -y squid
+
+для переадресации через 106 прокси в файл /etc/config/squid.conf добавить
+-------------------------------------------------------------------------------
+cache_peer 10.80.11.106 parent 3128 7 proxy-only default
+-------------------------------------------------------------------------------------------
+а на 106 для выбора из списка:
+
+прозрачный прокси
+----------------------------------------------------------------------------------------------
+http_port 3128 transparent    
+
+acl allow_ip <->src<---><------>"/etc/squid/acl/allow_ip"
+acl allow_icq <>src<---><------>"/etc/squid/acl/allow_icq"
+
+http_access allow allow_ip
+http_access deny all
+------------------------------------------------------------------------------------------------------
+
+systemctl enable squid
+systemctl restart squid
+
+
+
+
+
+
 
 
