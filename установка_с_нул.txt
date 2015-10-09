@@ -196,9 +196,11 @@ service postgresql start
 
 создаем пользователя для доступа по фтп (без прав логиниться):
 
-useradd -d /var/www/auto/ -s /sbin/nologin auto
+useradd -d /var/www/auto -s /sbin/nologin auto
 passwd auto
 
+useradd -d /var/www/mobil -s /sbin/nologin mobil
+passwd mobil
 
 
 создаем пользователя базы:
@@ -468,8 +470,8 @@ ALTER TABLE public.vodii OWNER TO auto;
 
 a=`date +%Y-%m-%d-%H%M`;
 mkdir /home/superbas/pgdamp/$a
-pg_dump -U postgres -w auto | /usr/bin/gzip -c > /home/superbas/pgdamp/$a/auto.gz
-pg_dump -U postgres -w mobil | /usr/bin/gzip -c > /home/superbas/pgdamp/$a/mobil.gz
+pg_dump -U postgres -w auto | gzip -c > /home/superbas/pgdamp/$a/auto.gz
+pg_dump -U postgres -w mobil | gzip -c > /home/superbas/pgdamp/$a/mobil.gz
 chown -R superbas /home/superbas
 echo "All ok!"
 ---------------------------------------------------------------------------------------
@@ -484,7 +486,7 @@ _______________________________________________________
 
 dropdb -U postgres $1
 createdb -U $1 $1
-/usr/bin/gunzip -c $1.gz | psql -U postgres $1
+gunzip -c $1.gz | psql -U postgres $1
 echo "All ok!"
 _______________________________________________________
 
@@ -630,7 +632,9 @@ systemctl restart firewalld
 
 
 
-Копируем содержимое папки "auto" в /var/www/auto
+
+Копируем содержимое папки "auto" в /var/www/auto "mobil" в /var/www/mobil 
+
 
 устанавлиаем собственника
 
@@ -645,7 +649,7 @@ setsebool -P httpd_can_network_connect 1
 usermod -g root apache
 
 service httpd restart
-chmod 777 /var/www
+chmod -R 777 /var/www
 
 
 Запустить 
@@ -661,17 +665,22 @@ Default  requiretty
 Default !requiretty 
 
 
-Для правильной работы с часовым поясом должно быть в файле /etc/asterisk/cdr.conf :
-
-usegmtime=no    ; log date/time in GMT.  Default is "no"
-
 Синхронизация времени.
 
 Установка
-yum install ntp
+yum install -y ntp
+
+в файле /etc/ntp.conf добавляем вместо других серверов:
+------------------------------------------------
+server pool.ntp.org iburst
+server 10.36.1.101 ibuster
+server 10.36.1.102 ibuster
+--------------------------------------------------
+
 service ntpd restart
 chkconfig --level 2345 ntpd on
-
+	or
+systemctl enable ntpd 
 Проверка:
 
 ntpq -c peers
@@ -691,11 +700,35 @@ cache_peer 10.80.11.106 parent 3128 7 proxy-only default
 ----------------------------------------------------------------------------------------------
 http_port 3128 transparent    
 
-acl allow_ip <->src<---><------>"/etc/squid/acl/allow_ip"
-acl allow_icq <>src<---><------>"/etc/squid/acl/allow_icq"
 
-http_access allow allow_ip
+
+
+acl music urlpath_regex -i \.mp3$ \.asf$ \.wma$ \.avi$
+acl acc_music src "/etc/squid/acl/can_music"
+acl denied_sites  dstdomain "/etc/squid/acl/deny_sites"
+acl banner  urlpath_regex "/etc/squid/acl/banner".
+acl allow_ip  src "/etc/squid/acl/allow_ip"
+acl allow_icq  src "/etc/squid/acl/allow_icq"
+
+
+
+
+#delay_class 1 2
+#delay_parameters 1 249320/249320 249320/249320 249320/249320
+#http_access deny flyer
+#http_access deny  denied_sites
+#http_access allow acc_music music.
+#.... ..... ...... ......
+#http_access deny all music.
+#delay_access 1 deny flyer
+#delay_access 1 deny music
+#http_access allow all
+http_access allow allow_ip.
+# ............ ....
 http_access deny all
+
+
+
 ------------------------------------------------------------------------------------------------------
 
 systemctl enable squid
