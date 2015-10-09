@@ -466,13 +466,24 @@ ALTER TABLE public.vodii OWNER TO auto;
 
 Для настройки резервирования базы создаем исполняемый файл backdb с содержимым:
 -------------------------------------------------------------------------------------
-#!/bin/sh
+#!/bin/bash
 
-a=`date +%Y-%m-%d-%H%M`;
+a=`date +%Y-%m-%d`
+b=`date -d "$a -15 days" +%Y-%m`
+c=`date +%Y-%m`
+
+echo $c
+echo $b
+
 mkdir /home/superbas/pgdamp/$a
 pg_dump -U postgres -w auto | gzip -c > /home/superbas/pgdamp/$a/auto.gz
-pg_dump -U postgres -w mobil | gzip -c > /home/superbas/pgdamp/$a/mobil.gz
+pg_dump -U postgres -w managers | gzip -c > /home/superbas/pgdamp/$a/managers.gz
 chown -R superbas /home/superbas
+
+if test "$b" = "$c"
+then
+cd /home/superbas/pgdamp; ls | grep -v $b | xargs rm -rfv
+fi
 echo "All ok!"
 ---------------------------------------------------------------------------------------
 где /home/superbas/pgdamp - путь к директории архива, желательно расшаеной в сети
