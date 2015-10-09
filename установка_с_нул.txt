@@ -469,11 +469,8 @@ ALTER TABLE public.vodii OWNER TO auto;
 #!/bin/bash
 
 a=`date +%Y-%m-%d`
-b=`date -d "$a -15 days" +%Y-%m`
+b=`date -d "$a -25 days" +%Y-%m`
 c=`date +%Y-%m`
-
-echo $c
-echo $b
 
 mkdir /home/superbas/pgdamp/$a
 pg_dump -U postgres -w auto | gzip -c > /home/superbas/pgdamp/$a/auto.gz
@@ -509,7 +506,7 @@ _______________________________________________________
 
 Для создания бэкапа всех баз
 
-pg_dumpall -U postgres | /usr/bin/gzip -c > all.gz
+pg_dumpall -U postgres | gzip -c > all.gz
  
  для восстановления
  
@@ -641,6 +638,11 @@ firewall-cmd --permanent --add-service=http --add-service=ftp --add-service=post
 systemctl restart firewalld
 
 
+В /etc/php.ini пропишем временную зону:
+
+------------------------------------------------------------------------
+date.timezone = "Europe/Kiev"
+------------------------------------------------------------------------
 
 
 
@@ -649,7 +651,7 @@ systemctl restart firewalld
 
 устанавлиаем собственника
 
-chown -R apache /var/www/
+chown -R apache /var/www
 
 
 
