@@ -123,7 +123,7 @@ service sshd restart
 
 =================================================================
 
-yum  install -y httpd vsftpd php php-cli php-pgsql postgresql postgresql-server
+yum  install -y httpd vsftpd php php-cli php-pgsql php-ldap postgresql postgresql-server
 
 
 ===========================================
