@@ -125,6 +125,17 @@ service sshd restart
 
 yum  install -y httpd vsftpd php php-cli php-pgsql php-ldap postgresql postgresql-server
 
+Ставим pear:
+
+yum install -y wget
+
+
+yum install php-pear
+
+pear install Mail
+pear install Mail_Mime
+pear install Net_SMTP
+
 
 ===========================================
 врем откл selinux
