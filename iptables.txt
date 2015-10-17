@@ -45,6 +45,10 @@ Check the existing rules:
 iptables -L -n
 Flush all existing rules:
 
+iptables -D INPUT 1
+удалить 1-е правило в цепочке INPUT
+
+
 iptables -F; iptables -X; iptables -Z
 Since changes to iptables configuration will take effect immediately, if you misconfigure the iptables rules, you may become blocked out of your server. You can prevent accidental blockouts with the following command. Remember to replace [Your-IP-Address] with your own public IP address or IP address range (for example, 201.55.119.43 or 201.55.119.0/24).
 
