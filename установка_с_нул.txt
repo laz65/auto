@@ -172,7 +172,11 @@ smbpasswd  -a superbas
  force user = superbas
 -------------------------------------------------------------------------------
 
+chkconfig smb on
 
+service smd restart
+
+или
 
 systemctl enable smb
 systemctl restart smb 
