@@ -144,10 +144,19 @@ systemctl restart firewalld
 
 или
 
+в файле /etc/sysconfig/iptables-config:
+-------------------------------------------
+IPTABLES_SAVE_ON_RESTART="yes"
+-------------------------------------------
+
 iptables -A INPUT -p tcp --dport 137:139 -j ACCEPT
 iptables -A INPUT -p udp --dport 137:139 -j ACCEPT
 iptables -A INPUT -p udp --dport 445 -j ACCEPT
 iptables -A INPUT -p tcp --dport 445 -j ACCEPT
+iptables -A INPUT -p icmp -j REJECT 
+
+
+
 service iptables restart
 
 
