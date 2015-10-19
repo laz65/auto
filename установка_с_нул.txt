@@ -153,6 +153,24 @@ firewall-cmd --permanent --add-service=samba
 
 systemctl restart firewalld
 
+или
+
+в файле /etc/sysconfig/iptables-config:
+-------------------------------------------
+IPTABLES_SAVE_ON_RESTART="yes"
+-------------------------------------------
+
+iptables -A INPUT -p tcp --dport 137:139 -j ACCEPT
+iptables -A INPUT -p udp --dport 137:139 -j ACCEPT
+iptables -A INPUT -p udp --dport 445 -j ACCEPT
+iptables -A INPUT -p tcp --dport 445 -j ACCEPT
+iptables -A INPUT -p icmp -j REJECT 
+
+
+
+service iptables restart
+
+
 
 setsebool -P samba_enable_home_dirs on
 setsebool -P samba_export_all_ro on
@@ -183,7 +201,11 @@ smbpasswd  -a superbas
  force user = superbas
 -------------------------------------------------------------------------------
 
+chkconfig smb on
 
+service smb restart
+
+или
 
 systemctl enable smb
 systemctl restart smb 
@@ -193,8 +215,34 @@ chcon -t samba_share_t /home/superbas
  
 smbclient -L //10.80.15.44/superbas -Usuperbas
  
-  
+======================================================
+Почта 
+
+yum install -y mailx sendmail
+
+
 ========================================================
+
+Чтение Smart дисков
+Инсталция:
+
+yum install -y smartmontools
+
+инфо о дисках
+
+fdisk -l
+
+Получаем:
+
+smartctl -a /dev/hda
+
+smartctl -a /dev/hda >> /tmp/1
+
+
+
+========================================================
+
+
 
 
 Инициализируем базу:

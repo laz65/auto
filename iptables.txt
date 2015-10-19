@@ -1,0 +1,103 @@
+Setup IPTables Firewall on CentOS 6
+Modified on: Thu, 4 Jun, 2015 at 11:30 am EST
+CentOS Security Server Apps
+Introduction
+A firewall is a type of network security tool that controls the inbound and outbound network traffic according to its predefined rule set. We can use a firewall along with other safety measures to protect our servers from hackers' pries and attacks.
+
+The design of a firewall can be either dedicated hardware or a software program running on our machine. On CentOS 6, the default firewall program is iptables.
+
+In this article, I will show you how to set up a basic iptables firewall based on the Vultr "WordPress on CentOS 6 x64" app, which will block all traffic except for web, SSH, NTP, DNS, and ping services. However, this is only a preliminary configuration which satisfies common security needs. You would need a more sophisticated iptables configuration if you have further requirements.
+
+Note:
+
+If you add an IPv6 address to your server, you should also set up the ip6tables service. Configuring ip6tables is outside of the scope of this article.
+
+Unlike CentOS 6, iptables is no longer the default firewall program on CentOS 7, and has been replaced with a program called firewalld. If you are planning to use CentOS 7, you will need to set up your firewall using firewalld.
+
+Prerequisites
+Freshly deploy a server instance with the Vultr "WordPress on CentOS 6 x64" app, then log in as root.
+
+Step 1: Determine the services and ports used on your server
+I assume that this server will only host a WordPress blog, and it will not be used as a router or provide other services (for example, mail, FTP, IRC, etc.).
+
+Here, we need the following services:
+
+HTTP (TCP on port 80)
+HTTPS (TCP on port 443)
+SSH (TCP on port 22 by default, can be changed for security purposes)
+NTP (UDP on port 123)
+DNS (TCP and UDP on port 53)
+ping (ICMP)
+All other unnecessary ports will be blocked.
+
+Step 2: Configure iptables rules
+Iptables controls traffic with a list of rules. When network packets are sent to our server, iptables will inspect them using each rule in sequence and take actions accordingly. If a rule is met, the other rules will be ignored. If no rules are met, iptables will use the default policy.
+
+All of the traffic can be categorized as INPUT, OUTPUT, and FORWARD.
+
+INPUT traffic can be either normal or malicious, should be allowed selectively.
+OUTPUT traffic is normally considered safe and should be allowed.
+FORWARD traffic is useless and should be blocked.
+Now, let's configure the iptables rules according to our needs. All the following commands should be input from your SSH terminal as root.
+
+Check the existing rules:
+
+iptables -L -n
+Flush all existing rules:
+
+iptables -D INPUT 1
+удалить 1-е правило в цепочке INPUT
+
+
+iptables -F; iptables -X; iptables -Z
+Since changes to iptables configuration will take effect immediately, if you misconfigure the iptables rules, you may become blocked out of your server. You can prevent accidental blockouts with the following command. Remember to replace [Your-IP-Address] with your own public IP address or IP address range (for example, 201.55.119.43 or 201.55.119.0/24).
+
+iptables -A INPUT -s [Your-IP-Address] -p tcp --dport 22 -j ACCEPT
+Allow all loopback (lo) traffic and drop all traffic to 127.0.0.0/8 other than lo:
+
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT -d 127.0.0.0/8 -j REJECT
+Block some common attacks:
+
+iptables -A INPUT -p tcp ! --syn -m state --state NEW -j DROP
+iptables -A INPUT -p tcp --tcp-flags ALL NONE -j DROP
+iptables -A INPUT -p tcp --tcp-flags ALL ALL -j DROP
+Accept all established inbound connections:
+
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+Allow HTTP and HTTPS inbound traffic:
+
+iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+Allow SSH connections:
+
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+Allow NTP connections:
+
+iptables -A INPUT -p udp --dport 123 -j ACCEPT
+Allow DNS queries:
+
+iptables -A INPUT -p udp --dport 53 -j ACCEPT
+iptables -A INPUT -p tcp --dport 53 -j ACCEPT
+Allow ping:
+
+iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
+At last, set the default policies:
+
+iptables -P INPUT DROP
+iptables -P OUTPUT ACCEPT
+iptables -P FORWARD DROP
+Step 3: Save the configurations
+Each of the changes that we made above have taken effect, but they are not permanent. If we don't save them to hard disk, they will be lost once the system reboots.
+
+Save the iptables configuration with the following command:
+
+service iptables save
+Our changes will be saved in the file /etc/sysconfig/iptables. You can review or modify the rules by editing that file.
+
+Workarounds for accidental blockout
+If you are blocked out of your server due to a configuration mistake, you can still regain your access with some workarounds.
+
+If you haven't saved your modifications to iptables rules yet, you can restart your server from the Vultr website interface, then your changes will be dropped.
+If you have saved your changes, you can log in your server through the console from the Vultr website interface, and input iptables -F to flush all of the iptables rules. Then you can set up the rules again.
+Read more at: https://www.vultr.com/docs/setup-iptables-firewall-on-centos-6
