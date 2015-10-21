@@ -131,10 +131,14 @@ yum install -y wget
 
 
 yum install php-pear
+ (на старых php-pear-Mail php-pear-Net-SMTP php-pear-Mail-Mime  )
 
+Если нужен прокси:
+pear config-set http_proxy  http://10.80.11.106:3128
+
+pear install Net_SMTP
 pear install Mail
 pear install Mail_Mime
-pear install Net_SMTP
 
 
 ===========================================
@@ -294,6 +298,72 @@ fdisk -l
 smartctl -a /dev/hda
 
 smartctl -a /dev/hda >> /tmp/1
+
+
+========================================================
+отправка смарта по почте:
+
+--------------------------------------------------------------
+#!/usr/bin/php
+<?php
+`rm -f /tmp/11`;
+`cat /var/spool/mail/123 >> /tmp/11`;
+
+$my_var = `smartctl -a /dev/sda`;
+$pos = explode("SMART Error Log Version",$my_var);// strpos($my_var,"SMART Error
+$my_var=$pos[0];
+$pos = explode("RAW_VALUE",$my_var);
+$my_var=$pos[1];
+`echo "Device info sda: $my_var" >> /tmp/11`;
+
+$my_var = `smartctl -a /dev/sdb`;
+$pos = explode("SMART Error Log Version",$my_var);// strpos($my_var,"SMART Error
+$my_var=$pos[0];
+$pos = explode("RAW_VALUE",$my_var);
+$my_var=$pos[1];
+`echo "Device info sdb: $my_var" >> /tmp/11`;
+
+`cat /proc/mdstat >> /tmp/11`;
+
+`cat /tmp/11 | sendmail -f zayavky@ukrtelecom.ua -t olazebnyk@ukrtelecom.ua`;
+`rm /tmp/11`;
+?>
+-----------------------------------------------------------
+или
+------------------------------------------------------------
+#!/usr/bin/php
+<?php
+
+$body = "INFO HDD \n";
+
+$my_var = `smartctl -a /dev/sda`;
+$pos = explode("SMART Error Log Version",$my_var);// strpos($my_var,"SMART Error
+$my_var=$pos[0];
+$pos = explode("RAW_VALUE",$my_var);
+$my_var=$pos[1];
+$body .= "Device info sda: " . $my_var;
+
+$my_var = `smartctl -a /dev/sdb`;
+$pos = explode("SMART Error Log Version",$my_var);// strpos($my_var,"SMART Error
+$my_var=$pos[0];
+$pos = explode("RAW_VALUE",$my_var);
+$my_var=$pos[1];
+$body .= "Device info sdb: " . $my_var;
+
+$body .= "Raid decice info:\n". `cat /proc/mdstat`;
+
+    // передача по почте
+include('Mail.php');
+ $headers = array ('From' => "zayavky@ukrtelecom.ua",
+    'To' => "olazebnyk@ukrtelecom.ua",
+    'Subject' => "HDD Server 106");
+ $smtp = Mail::factory('smtp',array ('host' => "send.ukrtelecom.net",
+    'auth' => true,'username' => "zayavky", 'password' => "P@ssw0rd"));
+
+$mail = $smtp->send("olazebnyk@ukrtelecom.ua", $headers, $body);
+
+?>
+----------------------------------------------------------------------------
 
 
 
