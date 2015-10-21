@@ -218,8 +218,65 @@ smbclient -L //10.80.15.44/superbas -Usuperbas
 ======================================================
 Почта 
 
-yum install -y mailx sendmail
+yum install -y install sendmail sendmail-cf openssl cyrus-sasl cyrus-sasl-plain
 
+
+
+Создание SSL сертификатов.
+
+mkdir /etc/mail/certs
+chmod 700 /etc/mail/certs 
+cd /etc/mail/certs
+openssl dsaparam 1024 -out dsa1024 -out dsa1024.pem
+openssl req -x509 -nodes -days 3650 -newkey dsa:dsa1024.pem -out /etc/mail/certs/mycert.pem -keyout /etc/mail/certs/mykey.pem
+openssl req -x509 -new -days 3650 -key /etc/mail/certs/mykey.pem -out /etc/mail/certs/mycert.pem
+ln -s /etc/mail/certs/mycert.pem /etc/mail/certs/CAcert.pem
+chmod 600 /etc/mail/certs/*
+
+
+Создание файла с данными для аутентификации.
+mkdir /etc/mail/auth
+vi /etc/mail/auth/authinfo
+-----------------------------------------------------------------------
+AuthInfo:smtp.gmail.com "U:root" "I:olazebnyk@gmail.com" "P:MYPASSWD"
+AuthInfo: "U:root" "I:olazebnyk@gmail.com" "P:MYPASSWD"
+-----------------------------------------------------------------------
+
+
+Конвертируем.
+makemap hash -r /etc/mail/auth/authinfo < /etc/mail/auth/authinfo
+
+Добавляем в sendmail.mc нужную конфигурацию. (Важно: сделать это до первого FEATURE)
+--------------------------------------------------------------------------------------
+dnl # Smrp relay
+define(`CERT_DIR', `/etc/mail/certs')
+define(`confCACERT_PATH', `CERT_DIR')
+define(`confCACERT', `CERT_DIR/CAcert.pem')
+define(`confSERVER_CERT', `CERT_DIR/mycert.pem')
+define(`confSERVER_KEY', `CERT_DIR/mykey.pem')
+define(`confCLIENT_CERT', `CERT_DIR/mycert.pem')
+define(`confCLIENT_KEY', `CERT_DIR/mykey.pem')
+dnl #
+dnl # gmail auth
+define(`SMART_HOST',`[smtp.gmail.com]')dnl
+define(`RELAY_MAILER_ARGS', `TCP $h 587')dnl
+define(`ESMTP_MAILER_ARGS', `TCP $h 587')dnl
+define(`confAUTH_OPTIONS', `A p')dnl
+TRUST_AUTH_MECH(`EXTERNAL DIGEST-MD5 CRAM-MD5 LOGIN PLAIN')dnl
+define(`confAUTH_MECHANISMS', `EXTERNAL GSSAPI DIGEST-MD5 CRAM-MD5 LOGIN PLAIN')dnl
+FEATURE(`authinfo',`hash -o /etc/mail/auth/authinfo.db')dnl
+-----------------------------------------------------------------------------------------
+Компилируем конфигурацию, перезапускаем sendmail и проверяем отправку почты.
+make -C /etc/mail
+service sendmail restart
+sendmail -f olazebnyk@gmail.com -v receiver@mail.domen
+Test
+.
+
+
+
+
+echo "primer pisma" | sendmail  laz65@ukr.net 
 
 ========================================================
 
