@@ -132,7 +132,7 @@ if (($dostup>>1&1) | ($dostup>>0&1))
 if (!($dostup>>0&1)) echo "<META HTTP-EQUIV=\"Refresh\" content =\"0; URL='index.php'\">"; else
 {
 $date_now = time();										  
-$result=pg_query($connection, "select * from auto a, user_auto u where a.podav = u.user_auto  and a.data_prib > $date_now  and a.stan <> 'Не потребує погодження' order by a.stan desc, a.data_otpr;");	
+$result=pg_query($connection, "select * from auto a, user_auto u where a.podav = u.user_auto  and a.data_prib > $date_now  order by a.stan desc, a.data_otpr;");	
 ?>
 <table width="100%" border="1">
 	<tr>
@@ -187,7 +187,7 @@ $('#eITDendtime<?php echo $nn; ?>').mask('H9:M9');
 	    <input name="id" type="hidden" id="id" value="<?php echo $db['auto_id']; ?>">
 
 		 <?php 
-		 if(($db['stan'] == "Затверджено, пог. з автобазою")|($db['stan'] == "Затверджено")|($db['stan'] == "Погоджено")|($db['stan'] == "Погоджено, пог. з автобазою"));
+		 if(($db['stan'] == "Затверджено, пог. з автобазою")|($db['stan'] == "Затверджено")|($db['stan'] == "Погоджено")|($db['stan'] == "Погоджено, пог. з автобазою")|($db['stan'] == "Не потребує погодження"));
 		 else {
 		 ?>
         <br><input type="submit" name="Submit" value="Погодити" >

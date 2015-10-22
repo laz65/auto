@@ -20,7 +20,7 @@ else
 	{
 		foreach ($_POST as $key=>$value) 
 			{
-			$_POST[$key] = iconv("windows-1251","UTF-8",$value);
+			$_POST[$key] = $value;
 			}
 		$connection = pg_connect("dbname=auto user=auto password=12345");
 		$date_now = time();		

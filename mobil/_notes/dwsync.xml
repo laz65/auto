@@ -15,6 +15,8 @@
 <file name="mod0.php" server="10.80.11.106//var/www/mobil/" local="130692553124742665" remote="130692552600000000" Dst="1" />
 <file name="auto.php" server="10.80.11.106" local="130868018710717086" remote="130868018400000000" Dst="2" />
 <file name="mod.php" server="10.80.11.106" local="130868024558135796" remote="130868024400000000" Dst="2" />
-<file name="import_ad.php" server="10.80.11.106" local="130867994512986912" remote="130867994400000000" Dst="2" />
+<file name="import_ad.php" server="10.80.11.106" local="130867994512986912" remote="130909234800000000" Dst="1" />
 <file name="index.php" server="10.80.11.106" local="130867990048469778" remote="130867989600000000" Dst="2" />
+<file name="auto0.php" server="10.80.11.106" local="130909304685091321" remote="130909234800000000" Dst="1" />
+<file name="mod0.php" server="10.80.11.106" local="130909309200027916" remote="130909237200000000" Dst="1" />
 </dwsync>
