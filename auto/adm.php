@@ -184,7 +184,7 @@ if(isset($_POST['login']))
 			echo `sudo -i htpasswd -b /var/www/auto/.htpasswd $log $passw`;
 			if (pg_query($connection, "update user_auto set pass = '$passw' where login = '$log';")) 
 			{
-				echo "Пароль змінено.<br>";
+				 echo "Пароль змінено.<br>";
 						# Отправка уведомления Админу по почте
 
 				 $subject = "Доступ до сервісу Використання автотранспорту";

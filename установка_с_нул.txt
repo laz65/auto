@@ -728,9 +728,12 @@ chroot_local_user=YES
 
 allow_writeable_chroot=YES
 
+
+
 для записи в файл при включенном selinux:
 
 chcon  -R -t httpd_sys_rw_content_t /var/www/
+chcon -R -t httpd_config_t /var/www/auto/.htpasswd
 
 setsebool -P httpd_enable_homedirs 1
 
