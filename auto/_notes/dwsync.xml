@@ -25,9 +25,9 @@
 <file name="ukaz0.JPG" server="10.80.11.106" local="129862898400000000" remote="130728634200000000" Dst="2" />
 <file name="ukaz.JPG" server="10.80.11.106" local="129862898400000000" remote="130728634200000000" Dst="2" />
 <file name="adm.php" server="10.80.11.106" local="130727842740599792" remote="130728632400000000" Dst="2" />
-<file name="calendar_ru.js" server="10.80.11.106" local="129862898400000000" remote="130863595800000000" Dst="2" />
-<file name="jquery.min.js" server="10.80.11.106" local="129862898400000000" remote="130695040200000000" Dst="2" />
-<file name="jquery.maskedinput-1.2.2.min.js" server="10.80.11.106" local="129862898400000000" remote="130695040200000000" Dst="2" />
+<file name="calendar_ru.js" server="10.80.11.106" local="129862898400000000" remote="130909384200000000" Dst="1" />
+<file name="jquery.min.js" server="10.80.11.106" local="129862898400000000" remote="130909384200000000" Dst="1" />
+<file name="jquery.maskedinput-1.2.2.min.js" server="10.80.11.106" local="129862898400000000" remote="130909384200000000" Dst="1" />
 <file name="vvod.php" server="10.80.11.106" local="130729453841089001" remote="130729453800000000" Dst="2" />
 <file name="jquery.printPage.js" server="10.80.11.106" local="129862898400000000" remote="130728634200000000" Dst="2" />
 <file name="kosht.php" server="10.80.11.106" local="130730511607406025" remote="130730511600000000" Dst="2" />
@@ -59,8 +59,8 @@
 <file name="help_clip_image013.jpg" server="10.80.11.106" local="129937444049720667" remote="130728633600000000" Dst="2" />
 <file name="zayavka.php" server="10.80.11.106" local="130855649301309171" remote="130855648800000000" Dst="2" />
 <file name="docs.php" server="10.80.11.106" local="130725162042480729" remote="130728633600000000" Dst="2" />
-<file name="stan0.php" server="10.80.11.106" local="130758904231307992" remote="130758904200000000" Dst="2" />
-<file name="zatv0.php" server="10.80.11.106" local="130734898410167271" remote="130734898200000000" Dst="2" />
+<file name="stan0.php" server="10.80.11.106" local="130758904231307992" remote="130909384200000000" Dst="1" />
+<file name="zatv0.php" server="10.80.11.106" local="130909454885243364" remote="130909384200000000" Dst="1" />
 <file name="zvit.php" server="10.80.11.106" local="130730395892036676" remote="130730395800000000" Dst="2" />
 <file name="adm.php" server="10.80.11.106/test/" local="130727842740599792" remote="130727842200000000" Dst="2" />
 <file name="archive.php" server="10.80.11.106/test/" local="130725162042929827" remote="130725162000000000" Dst="2" />
