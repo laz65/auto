@@ -367,7 +367,22 @@ $mail = $smtp->send("olazebnyk@ukrtelecom.ua", $headers, $body);
 
 ?>
 ----------------------------------------------------------------------------
+Для gmail фрагмент:
+-----------------------------
+// передача по почте
+include('Mail.php');
 
+$headers = array ('From' => "olazebnyk@gmail.com",
+  'To' => "laz65@ukr.net",
+  'Subject' => "HDD Server 106");
+
+$smtp = Mail::factory('smtp',array ('host' => "ssl://smtp.gmail.com",
+  'port'=>"465", 'auth' => true,'username' => "olazebnyk@gmail.com",
+  'password' => "МОЙ_ПАРОЛЬ"));
+
+$mail = $smtp->send("laz65@ukr.net", $headers, $body);
+
+-----------------------------
 
 
 ========================================================
@@ -733,9 +748,9 @@ allow_writeable_chroot=YES
 для записи в файл при включенном selinux:
 
 chcon  -R -t httpd_sys_rw_content_t /var/www/
-chcon -R -t httpd_config_t /var/www/auto/.htpasswd
 
 setsebool -P httpd_enable_homedirs 1
+setsebool -P allow_httpd_mod_auth_pam 1
 
 Для открытия сокетов из PHP:
 
