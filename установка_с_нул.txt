@@ -367,7 +367,22 @@ $mail = $smtp->send("olazebnyk@ukrtelecom.ua", $headers, $body);
 
 ?>
 ----------------------------------------------------------------------------
+Для gmail фрагмент:
+-----------------------------
+// передача по почте
+include('Mail.php');
 
+$headers = array ('From' => "olazebnyk@gmail.com",
+  'To' => "laz65@ukr.net",
+  'Subject' => "HDD Server 106");
+
+$smtp = Mail::factory('smtp',array ('host' => "ssl://smtp.gmail.com",
+  'port'=>"465", 'auth' => true,'username' => "olazebnyk@gmail.com",
+  'password' => "МОЙ_ПАРОЛЬ"));
+
+$mail = $smtp->send("laz65@ukr.net", $headers, $body);
+
+-----------------------------
 
 
 ========================================================
