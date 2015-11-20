@@ -956,8 +956,182 @@ systemctl restart squid
 
 
 
+________________________________________________________________
+
+Подключение к oracle
+
+нужно прописать имя своего сервера  в файлах
+
+/etc/hosts :
+
+_____________________
+
+127.0.0.1   NameMashine
+_____________________ 
+
+и
+
+/etc/sysconfig/nextwork :
+
+_______________________
+
+HOSTNAME= NameMashine
+_______________________
+
+Далее
+
+1. Идем на сайт Oracle и регистрируемся (регистрация нам будет нужна, для скачивания клиента).
+2. Скачиваем с сайта (http://www.oracle.com/technetwork/database/features/instant-client/index-097480.html) RPM для нашей архитектуры.
+3. Устанавливаем скачанные RPM (у меня версии 11.2.0.3)
+
+
+#rpm -Uvh oracle-instantclient11.2-basic-11.2.0.3.0-1.x86_64.rpm
+#rpm -Uvh oracle-instantclient11.2-devel-11.2.0.3.0-1.x86_64.rpm
+#rpm -Uvh oracle-instantclient11.2-sqlplus-11.2.0.3.0-1.x86_64.rpm
+#rpm -Uvh oracle-instantclient11.2-tools-11.2.0.3.0-1.x86_64.rpm
+
+4. Подключаем репозиторий REMI. Он нам понадобится для PHP модуля OCI8
+
+
+#rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm
+#rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+5. Устанавливаем php модуль php-oci8
+
+
+#yum --enablerepo remi install php-oci8
+Проверяем, что у нас все поставилось
 
 
 
+#php -v
+PHP Warning:  PHP Startup: Unable to load dynamic library '/usr/lib64/php/modules/oci8.so' - libclntsh.so.11.1: cannot open shared object file: No such file or directory in Unknown on line 0
+PHP Warning:  PHP Startup: Unable to load dynamic library '/usr/lib64/php/modules/pdo_oci.so' - libclntsh.so.11.1: cannot open shared object file: No such file or directory in Unknown on line 0
+PHP 5.4.14 (cli) (built: Apr 11 2013 11:04:32)
+Copyright (c) 1997-2013 The PHP Group
+Zend Engine v2.4.0, Copyright (c) 1998-2013 Zend Technologies
+Упс, ошибка :) Ну что ж, значит надо ее исправить
 
+1. Отрываем в редакторе файл /etc/profile.d/oracle.sh
+
+#vi /etc/profile.d/oracle.sh
+2. Записываем в него такое содержимое:
+
+
+#!/bin/bash
+
+TMP=/tmp; export TMP
+TMPDIR=$TMP; export TMPDIR
+
+ORACLE_BASE=/usr/lib/oracle/11.2/client64; export ORACLE_BASE
+ORACLE_HOME=/usr/lib/oracle/11.2/client64; export ORACLE_HOME
+ORACLE_TERM=xterm; export ORACLE_TERM
+PATH=$PATH:$ORACLE_HOME/bin; export PATH
+SQLPATH=/$ORACLE_HOME/bin/sqlplus;export SQLPATH
+LD_LIBRARY_PATH=$ORACLE_HOME/lib:/usr/lib; export LD_LIBRARY_PATH
+
+# это где будут храниться файлы с tnsnames (описанием наших серверов оракл)
+TNS_ADMIN=$ORACLE_HOME/network/admin
+
+#!/bin/bash
+ 
+TMP=/tmp; export TMP
+TMPDIR=$TMP; export TMPDIR
+ 
+ORACLE_BASE=/usr/lib/oracle/11.2/client64; export ORACLE_BASE
+ORACLE_HOME=/usr/lib/oracle/11.2/client64; export ORACLE_HOME
+ORACLE_TERM=xterm; export ORACLE_TERM
+PATH=$PATH:$ORACLE_HOME/bin; export PATH
+SQLPATH=/$ORACLE_HOME/bin/sqlplus;export SQLPATH
+LD_LIBRARY_PATH=$ORACLE_HOME/lib:/usr/lib; export LD_LIBRARY_PATH
+ 
+# это где будут храниться файлы с tnsnames (описанием наших серверов оракл)
+TNS_ADMIN=$ORACLE_HOME/network/admin
+3. Сохраняем файл и выходим из редактора, и перелогиниваемся в систему
+4. Открываем для редактирования файл /etc/ld.so.conf.d/oracle-11.2.conf
+
+
+
+#vi /etc/ld.so.conf.d/oracle-11.2.conf
+5. Добавляем в него:
+
+
+/usr/lib/oracle/11.2/client64/lib/
+
+
+6. Сохраняем и выходи
+7. Выполняем команду:
+
+
+#ldconfig
+
+8. Проверяем что наш модуль php теперь видит все необходимые ему библиотеки:
+
+
+# ldd /usr/lib64/php/modules/oci8.so
+        linux-vdso.so.1 =>  (0x00007fff229ff000)
+        libclntsh.so.11.1 => /usr/lib/oracle/11.2/client64/lib/libclntsh.so.11.1 (0x00007fdf9c410000)
+        libc.so.6 => /lib64/libc.so.6 (0x00007fdf9c07d000)
+        libnnz11.so => /usr/lib/oracle/11.2/client64/lib/libnnz11.so (0x00007fdf9bcb1000)
+        libdl.so.2 => /lib64/libdl.so.2 (0x00007fdf9baad000)
+        libm.so.6 => /lib64/libm.so.6 (0x00007fdf9b829000)
+        libpthread.so.0 => /lib64/libpthread.so.0 (0x00007fdf9b60b000)
+        libnsl.so.1 => /lib64/libnsl.so.1 (0x00007fdf9b3f2000)
+        libaio.so.1 => /lib64/libaio.so.1 (0x00007fdf9b1f1000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007fdf9eed2000)
+9. Проверяем что модуль подключился нормально:
+
+
+
+# php -m | grep oci
+oci8
+
+
+# php -i | grep -i oci
+/etc/php.d/oci8.ini,
+/etc/php.d/pdo_oci.ini,
+oci8
+OCI8 Support => enabled
+oci8.connection_class => no value => no value
+oci8.default_prefetch => 100 => 100
+oci8.events => Off => Off
+oci8.max_persistent => -1 => -1
+oci8.old_oci_close_semantics => Off => Off
+oci8.persistent_timeout => -1 => -1
+oci8.ping_interval => 60 => 60
+oci8.privileged_connect => Off => Off
+oci8.statement_cache_size => 20 => 20
+PDO drivers => oci, sqlite
+PDO_OCI
+PDO Driver for OCI 8 and later => enabled
+10. Проверяем что мы можем подключиться к нашему Oracle серверу. Для этого пропишем его в tnsnames
+
+
+#cat /usr/lib/oracle/11.2/client64/network/admin/tnsnames.ora
+ 
+ORASERV =
+  (DESCRIPTION =
+       (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.1 )(PORT = 1521))
+           (CONNECT_DATA =
+              (SERVER = SHARED)
+              (SERVICE_NAME = ORASERVXS)
+            )
+  )
+Сохраним и выйдем из файлы.
+
+11. Выполним команду:
+
+
+# sqlplus64 user/pass@ORASRV
+Если вы увидели такое сообщение:
+
+SQL*Plus: Release 11.2.0.3.0 Production on Mon Apr 22 07:04:32 2013
+ 
+Copyright (c) 1982, 2011, Oracle.  All rights reserved.
+ 
+Connected to:
+Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+ 
+SQL>
+значит все настроено и работает верно.
 
