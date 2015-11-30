@@ -1135,3 +1135,48 @@ With the Partitioning, OLAP, Data Mining and Real Application Testing options
 SQL>
 значит все настроено и работает верно.
 
+
+
+
+==========================================================================
+Синхронизация времени
+==========================================================================
+
+файл-скрипт для синхр через тсп:
+
+------------------------------------------------
+#!/usr/bin/php
+<?php
+//define_syslog_variables();
+openlog("my_timelog", LOG_PERROR, LOG_LOCAL0);
+
+$dataText = chr(0xDC).chr(20).date( 'H\:i:s d\-m\-y', time()+2).chr(255);
+$fp = fsockopen("10.80.16.5", 4001, $errno, $errstr, 10);
+if (!$fp).
+{
+    echo "$errstr ($errno)<br />\n";
+    syslog(LOG_WARNING," $errstr ($errno)");
+}.
+else.
+{
+    fwrite($fp, chr(5).chr(2));
+    $my = "";
+    socket_set_timeout($fp,2);
+    while ( ($mysym = fread($fp, 1)) != '').
+    {
+      $my .= $mysym;
+    }
+    fwrite($fp, $dataText);
+    $dataText = "";
+    socket_set_timeout($fp,2);
+    while ( ($mysym = fread($fp, 1)) != '').
+    {
+        $dataText .= $mysym;.
+    }
+    fclose($fp);
+    syslog(LOG_WARNING,"$dataText OK!");
+}
+closelog();
+?>
+
+--------------------------------
