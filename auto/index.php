@@ -119,6 +119,7 @@ if (($dostup>>1&1) | ($dostup>>0&1))
 
 <div align="center">
 <?php
+if (isset($_GET['flag'])); else $_GET['flag'] = 'false';
 if (isset($_GET['id']))
 	{
 		$auto_id = $_GET['id'];
